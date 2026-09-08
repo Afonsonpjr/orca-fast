@@ -1,10 +1,10 @@
-# Gerador de Orç¡¡amentos em Nós
+# Orç¡¡amentos em Nós
 
 Editor visual de orç¡¡amentos estilo node-based para a loja de tintas e decoração.
 
 ## Uso
 
-Abra o arquivo `orcamento-node-editor.html` diretamente no navegador.
+Abra `orcamento-node-editor.html` diretamente no navegador.
 
 ## Funcionalidades
 
