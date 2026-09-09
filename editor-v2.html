@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orca Fast 2.0</title>
+<style>
+:root{--bg:#14151d;--panel:#1c1e29;--line:#33364a;--txt:#e7e8ee;--muted:#9aa0b4;--brand:#7c3aed;--client:#2563eb;--product:#16a34a;--promo:#f59e0b;--sidebar:#1a1c26}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;overflow:hidden;background:var(--bg);color:var(--txt);font-family:Arial,sans-serif;display:flex}
+#sidebar{width:320px;background:var(--sidebar);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#toolbar{height:54px;display:flex;gap:8px;align-items:center;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+#toolbar h1{font-size:15px;margin:0 10px 0 0;color:#fff;white-space:nowrap}
+.btn{border:1px solid var(--line);background:#252837;color:var(--txt);border-radius:7px;padding:7px 10px;font-size:12.5px;cursor:pointer;transition:.15s}
+.btn:hover{filter:brightness(1.18)}
+.btn.p{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.c{border-color:var(--client);color:#7db0ff}
+.btn.r{border-color:var(--product);color:#76df9a}
+.btn.o{border-color:var(--promo);color:#ffd166}
+.btn.d{border-color:#dc2626;color:#f87171}
+.space{flex:1}
+#canvas-wrap{position:relative;flex:1;overflow:auto;background-image:radial-gradient(#303244 1px,transparent 1px);background-size:22px 22px}
+#stage,#links{position:absolute;width:3000px;height:2000px;inset:0}
+#links{pointer-events:none}
+.node{position:absolute;width:270px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 8px 22px #0008;user-select:none}
+.node.dragging{z-index:50;box-shadow:0 12px 35px #000a}
+.head{cursor:grab;padding:9px 10px;border-radius:10px 10px 0 0;font-weight:bold;font-size:13px;display:flex;justify-content:space-between}
+.cliente .head{background:var(--client)}
+.produto .head{background:var(--product)}
+.promocao .head{background:var(--promo);color:#24242b}
+.total .head{background:var(--brand)}
+.x{cursor:pointer;opacity:.8}
+.x:hover{opacity:1}
+.body{padding:10px;display:grid;gap:7px}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+.field input,.field select{width:100%;padding:6px;border-radius:6px;border:1px solid var(--line);background:#252837;color:var(--txt);font-size:12px}
+.field input:focus,.field select:focus{outline:none;border-color:var(--brand)}
+.cols{display:flex;gap:7px}
+.cols .field{flex:1}
+.port{position:absolute;width:14px;height:14px;border:2px solid #a6abc8;border-radius:50%;background:#34384d;cursor:crosshair;z-index:20}
+.port:hover,.port.active{background:#fff}
+.out{right:-8px;top:50%}
+.in{left:-8px;top:22px}
+.promoIn{left:50%;bottom:-8px;transform:translateX(-50%)}
+.cliente .out{border-color:var(--client)}
+.produto .out{border-color:var(--product)}
+.promocao .out{border-color:var(--promo)}
+.edge{fill:none;stroke-width:3}
+.summary{max-height:150px;overflow:auto;font-size:12px;padding:7px;border:1px solid var(--line);border-radius:6px;background:#252837}
+.item{padding:4px 0;border-bottom:1px dashed var(--line)}
+.sum{display:flex;justify-content:space-between;font-size:13px;margin-top:5px}
+.sum b{color:#fff}
+textarea{width:100%;height:130px;background:#252837;color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:7px;font-size:12px;resize:vertical}
+.actions{display:flex;gap:6px;margin-top:6px}
+.actions .btn{flex:1;padding:6px;font-size:11.5px}
+#side-header{padding:12px;border-bottom:1px solid var(--line);background:#161821}
+#side-header h2{margin:0;font-size:14px;color:#fff}
+#side-tabs{display:flex;border-bottom:1px solid var(--line);background:#161821}
+.tab{flex:1;padding:9px;text-align:center;cursor:pointer;font-size:12px;color:var(--muted);border-bottom:2px solid transparent}
+.tab.active{color:#fff;border-bottom-color:var(--brand)}
+.tab:hover{color:var(--txt)}
+#side-content{flex:1;overflow:auto;padding:10px}
+.prod-item{display:flex;gap:8px;padding:8px;border:1px solid var(--line);border-radius:7px;margin-bottom:7px;background:#20222e;cursor:pointer}
+.prod-item:hover{border-color:var(--brand)}
+.prod-thumb{width:48px;height:48px;border-radius:5px;background:#2a2d3d;border:1px solid var(--line);object-fit:cover}
+.prod-info{flex:1}
+.prod-name{font-size:12.5px;font-weight:bold;margin-bottom:3px}
+.prod-meta{font-size:11px;color:var(--muted)}
+#catalog-actions{display:flex;gap:6px;margin-bottom:10px}
+#catalog-actions .btn{flex:1}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}
+.modal.show{display:flex}
+.modal-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:480px;max-width:95%;box-shadow:0 15px 40px #000a}
+.modal-head{padding:12px 14px;border-bottom:1px solid var(--line);font-weight:bold;font-size:14px;display:flex;justify-content:space-between}
+.modal-body{padding:14px;max-height:70vh;overflow:auto}
+.modal-foot{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+.close-modal{cursor:pointer;font-size:18px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#2a2d3d;border:1px solid var(--line);padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:300}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="side-header"><h2>📦 Cat logo de Produtos</h2></div>
+  <div id="side-tabs">
+    <div class="tab active" data-tab="catalogo">Cat logo</div>
+    <div class="tab" data-tab="orcamentos">Orç¡¡amentos</div>
+  </div>
+  <div id="side-content">
+    <div id="tab-catalogo">
+      <div id="catalog-actions">
+        <button class="btn p" onclick="openProductModal()">+ Novo Produto</button>
+        <button class="btn" onclick="exportCatalog()">⬇️ Exportar</button>
+        <button class="btn" onclick="document.getElementById('import-catalog').click()">⬆️ Importar</button>
+        <input type="file" id="import-catalog" accept=".json" style="display:none" onchange="importCatalog(this)">
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <input type="text" id="search-prod" placeholder="Buscar produto..." oninput="renderCatalog()">
+      </div>
+      <div id="catalog-list"></div>
+    </div>
+    <div id="tab-orcamentos" style="display:none">
+      <div id="orcamento-actions" style="display:flex;gap:6px;margin-bottom:10px">
+        <button class="btn p" onclick="newOrcamento()" style="flex:1">+ Novo</button>
+        <button class="btn" onclick="exportAllOrcamentos()" style="flex:1">⬇️ Exportar Todos</button>
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <input type="text" id="search-orc" placeholder="Buscar orç¡¡amento..." oninput="renderOrcamentos()">
+      </div>
+      <div id="orcamento-list"></div>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="toolbar">
+    <h1>🎨 Orca Fast 2.0</h1>
+    <button class="btn c" onclick="addNode('cliente')">+ Cliente</button>
+    <button class="btn r" onclick="addNode('produto')">+ Produto</button>
+    <button class="btn o" onclick="addNode('promocao')">+ Promoç¡¡o</button>
+    <button class="btn p" onclick="addNode('total')">+ Total</button>
+    <span class="space"></span>
+    <button class="btn" onclick="saveCurrent()">💾 Salvar</button>
+    <button class="btn" onclick="exportPipeline()">⬇️ Exportar</button>
+    <button class="btn" onclick="document.getElementById('import-pipeline').click()">⬆️ Importar</button>
+    <input type="file" id="import-pipeline" accept=".json" style="display:none" onchange="importPipeline(this)">
+    <button class="btn d" onclick="clearAll()">🗑️ Limpar</button>
+  </div>
+  <div id="canvas-wrap">
+    <svg id="links"></svg>
+    <div id="stage"></div>
+  </div>
+</div>
+
+<!-- Modal Produto -->
+<div id="modal-prod" class="modal">
+  <div class="modal-box">
+    <div class="modal-head"><span id="modal-prod-title">Novo Produto</span><span class="close-modal" onclick="closeProductModal()">✕</span></div>
+    <div class="modal-body">
+      <input type="hidden" id="prod-id">
+      <div class="field" style="margin-bottom:8px"><label>Nome</label><input type="text" id="prod-nome"></div>
+      <div class="cols" style="margin-bottom:8px"><div class="field"><label>Volume</label><input type="text" id="prod-volume"></div><div class="field"><label>Categoria</label><input type="text" id="prod-cat"></div></div>
+      <div class="cols" style="margin-bottom:8px"><div class="field"><label>Preç¡¡o (R$)</label><input type="number" step="0.01" id="prod-preco"></div><div class="field"><label>Rendimento (mÂ²)</label><input type="number" id="prod-rend"></div></div>
+      <div class="field" style="margin-bottom:8px"><label>Cor (hex)</label><input type="color" id="prod-cor" value="#ffffff" style="height:38px"></div>
+      <div class="field"><label>Imagem</label><input type="file" id="prod-img" accept="image/*" onchange="previewImage(this)"></div>
+      <img id="prod-preview" style="width:100%;max-height:180px;object-fit:contain;margin-top:8px;border-radius:6px;border:1px solid var(--line);display:none">
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeProductModal()">Cancelar</button>
+      <button class="btn p" onclick="saveProduct()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ====== ESTADO ======
+let N={},E=[],k=1,wire=null,currentOrc='orc-1';
+const S=document.querySelector('#stage'),B=document.querySelector('#canvas-wrap'),V=document.querySelector('#links');
+const D={cliente:{nome:'',telefone:'',vendedor:'Afonso'},produto:{nome:'',volume:'',preco:'',promo:'',rendimento:'',qtd:1},promocao:{nome:'Promoç¡¡o',desconto:10},total:{}};
+let catalog=JSON.parse(localStorage.orcaCatalog||'[]');
+let orcamentos=JSON.parse(localStorage.orcaOrcs||'{"orc-1":{"nome":"Orç¡¡amento 1","data":new Date().toISOString(),"nodes":[],"edges":[]}}');
+let currentImgData=null;
+
+// ====== UTILS ======
+const uid=p=>p+(k++);
+const money=v=>'R$ '+(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+const toast=t=>{let e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(e.t);e.t=setTimeout(()=>e.classList.remove('show'),2200)};
+
+// ====== CAT LOGO ======
+function renderCatalog(){
+  const q=document.getElementById('search-prod').value.toLowerCase();
+  const list=document.getElementById('catalog-list');
+  list.innerHTML='';
+  catalog.filter(p=>p.nome.toLowerCase().includes(q)||p.cat?.toLowerCase().includes(q)).forEach(p=>{
+    const item=document.createElement('div');
+    item.className='prod-item';
+    item.innerHTML=`<img class="prod-thumb" src="${p.img||'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjMmEyZDNkIi8+PHRleHQgeD0iNTAlJSIgeT0iNTAlJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzlhYTBiNCIgZm9udC1zaXplPSIxMiI+PC90ZXh0Pjwvc3ZnPg=='}" onerror="this.style.display='none'">
+      <div class="prod-info"><div class="prod-name">${p.nome}</div><div class="prod-meta">${p.volume||''} ${p.cat?'• '+p.cat:''} • ${money(p.preco)} • ${p.rend||0}mÂ²</div></div>`;
+    item.onclick=()=>selectProductInNode(p);
+    list.appendChild(item);
+  });
+}
+
+function openProductModal(id){
+  const p=catalog.find(x=>x.id===id);
+  document.getElementById('prod-id').value=p?.id||'';
+  document.getElementById('prod-nome').value=p?.nome||'';
+  document.getElementById('prod-volume').value=p?.volume||'';
+  document.getElementById('prod-cat').value=p?.cat||'';
+  document.getElementById('prod-preco').value=p?.preco||'';
+  document.getElementById('prod-rend').value=p?.rend||'';
+  document.getElementById('prod-cor').value=p?.cor||'#ffffff';
+  currentImgData=p?.img||null;
+  const preview=document.getElementById('prod-preview');
+  if(p?.img){preview.src=p.img;preview.style.display='block'}else{preview.style.display='none'};
+  document.getElementById('modal-prod-title').textContent=p?'Editar Produto':'Novo Produto';
+  document.getElementById('modal-prod').classList.add('show');
+}
+
+function closeProductModal(){document.getElementById('modal-prod').classList.remove('show')}
+
+function previewImage(input){
+  const f=input.files[0];
+  if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{currentImgData=e.target.result;document.getElementById('prod-preview').src=currentImgData;document.getElementById('prod-preview').style.display='block'};
+  r.readAsDataURL(f);
+}
+
+function saveProduct(){
+  const id=document.getElementById('prod-id').value||uid('prod-');
+  const data={id,nome:document.getElementById('prod-nome').value,volume:document.getElementById('prod-volume').value,cat:document.getElementById('prod-cat').value,preco:+document.getElementById('prod-preco').value,rend:+document.getElementById('prod-rend').value,cor:document.getElementById('prod-cor').value,img:currentImgData};
+  const idx=catalog.findIndex(x=>x.id===id);
+  if(idx>=0)catalog[idx]=data;else catalog.push(data);
+  localStorage.orcaCatalog=JSON.stringify(catalog);
+  closeProductModal();
+  renderCatalog();
+  toast('Produto salvo!');
+}
+
+function exportCatalog(){
+  const blob=new Blob([JSON.stringify(catalog,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='catalogo-produtos.json';a.click();
+}
+
+function importCatalog(input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{try{const d=JSON.parse(e.target.result);if(Array.isArray(d)){catalog=d;localStorage.orcaCatalog=JSON.stringify(catalog);renderCatalog();toast('Cat logo importado!')}}catch(err){toast('Erro ao importar')}};
+  r.readAsText(f);
+}
+
+// ====== OR AMENTOS ======
+function renderOrcamentos(){
+  const q=document.getElementById('search-orc').value.toLowerCase();
+  const list=document.getElementById('orcamento-list');
+  list.innerHTML='';
+  Object.entries(orcamentos).filter(([_,o])=>o.nome.toLowerCase().includes(q)).forEach(([id,o])=>{
+    const item=document.createElement('div');
+    item.className='prod-item';
+    item.style.cursor='pointer';
+    item.innerHTML=`<div class="prod-info"><div class="prod-name">${o.nome}</div><div class="prod-meta">${new Date(o.data).toLocaleDateString()} ${currentOrc===id?'• <b style="color:var(--brand)">Atual</b>':''}</div></div>`;
+    item.onclick=()=>loadOrcamento(id);
+    list.appendChild(item);
+  });
+}
+
+function newOrcamento(){
+  const id=uid('orc-');
+  orcamentos[id]={nome:`Orç¡¡amento ${Object.keys(orcamentos).length+1}`,data:new Date().toISOString(),nodes:[],edges:[]};
+  localStorage.orcaOrcs=JSON.stringify(orcamentos);
+  currentOrc=id;
+  clearAll();
+  renderOrcamentos();
+  toast('Novo orç¡¡amento criado');
+}
+
+function saveCurrent(){
+  orcamentos[currentOrc].nodes=Object.values(N).map(n=>({id:n.id,t:n.t,x:n.x,y:n.y,d:n.d}));
+  orcamentos[currentOrc].edges=E;
+  orcamentos[currentOrc].data=new Date().toISOString();
+  localStorage.orcaOrcs=JSON.stringify(orcamentos);
+  renderOrcamentos();
+  toast('Orç¡¡amento salvo');
+}
+
+function loadOrcamento(id){
+  currentOrc=id;
+  const o=orcamentos[id];
+  clearAll();
+  N={};E=[];
+  o.nodes.forEach(n=>{N[n.id]={id:n.id,t:n.t,x:n.x,y:n.y,d:n.d};render(N[n.id])});
+  E=o.edges||[];
+  draw();calc();
+  renderOrcamentos();
+  toast('Orç¡¡amento carregado');
+}
+
+function exportAllOrcamentos(){
+  const blob=new Blob([JSON.stringify(orcamentos,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='orcamentos.json';a.click();
+}
+
+// ====== PIPELINE ======
+function exportPipeline(){
+  const data={version:2,catalog,orcamentos,currentOrc,nodes:Object.values(N).map(n=>({id:n.id,t:n.t,x:n.x,y:n.y,d:n.d})),edges:E};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pipeline-orca.json';a.click();
+}
+
+function importPipeline(input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{try{
+    const d=JSON.parse(e.target.result);
+    if(d.catalog)catalog=d.catalog;
+    if(d.orcamentos)orcamentos=d.orcamentos;
+    if(d.currentOrc)currentOrc=d.currentOrc;
+    clearAll();
+    N={};E=[];
+    (d.nodes||[]).forEach(n=>{N[n.id]={id:n.id,t:n.t,x:n.x,y:n.y,d:n.d};render(N[n.id])});
+    E=d.edges||[];
+    localStorage.orcaCatalog=JSON.stringify(catalog);
+    localStorage.orcaOrcs=JSON.stringify(orcamentos);
+    renderCatalog();renderOrcamentos();draw();calc();
+    toast('Pipeline importada!');
+  }catch(err){toast('Erro ao importar pipeline')}};
+  r.readAsText(f);
+}
+
+// ====== N S ======
+function addNode(t,x,y,d){
+  const i=uid(t[0]);
+  const n={id:i,t,x:x??100+Object.keys(N).length*30,y:y??100+Object.keys(N).length*30,d:{...D[t],...d}};
+  N[i]=n;render(n);calc();return i;
+}
+
+function render(n){
+  const e=document.createElement('div');
+  e.id=n.id;e.className='node '+n.t;e.style.left=n.x+'px';e.style.top=n.y+'px';
+  let title='',body='',ports='';
+  if(n.t==='cliente'){
+    title='👤 Cliente';
+    body=`<div class="field"><label>Nome</label><input value="${n.d.nome||''}" oninput="edit('${n.id}','nome',this.value)"></div>
+          <div class="field"><label>WhatsApp</label><input value="${n.d.telefone||''}" oninput="edit('${n.id}','telefone',this.value)"></div>
+          <div class="field"><label>Consultor</label><input value="${n.d.vendedor||'Afonso'}" oninput="edit('${n.id}','vendedor',this.value)"></div>`;
+    ports=`<i class="port out" data-p="out"></i>`;
+  }
+  if(n.t==='produto'){
+    title='🧴 Produto';
+    body=`<div class="field"><label>Produto (buscar no cat logo)</label><input type="text" id="sel-${n.id}" placeholder="Digite ou selecione..." oninput="filterProducts('${n.id}',this.value)"></div>
+          <div id="sug-${n.id}" style="max-height:100px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-bottom:7px;display:none"></div>
+          <div class="cols"><div class="field"><label>Volume</label><input value="${n.d.volume||''}" oninput="edit('${n.id}','volume',this.value)"></div><div class="field"><label>Qtd</label><input type="number" value="${n.d.qtd||1}" oninput="edit('${n.id}','qtd',this.value)"></div></div>
+          <div class="cols"><div class="field"><label>Preç¡¡o</label><input type="number" step="0.01" value="${n.d.preco||''}" oninput="edit('${n.id}','preco',this.value)"></div><div class="field"><label>Promo</label><input type="number" step="0.01" value="${n.d.promo||''}" oninput="edit('${n.id}','promo',this.value)"></div></div>
+          <div class="field"><label>Rendimento (mÂ²)</label><input type="number" value="${n.d.rendimento||''}" oninput="edit('${n.id}','rendimento',this.value)"></div>`;
+    ports=`<i class="port out" data-p="out"></i><i class="port promoIn" data-p="promo"></i>`;
+  }
+  if(n.t==='promocao'){
+    title='🏷️ Promoç¡¡o';
+    body=`<div class="field"><label>Nome</label><input value="${n.d.nome||'Promoç¡¡o'}" oninput="edit('${n.id}','nome',this.value)"></div>
+          <div class="field"><label>Desconto (%)</label><input type="number" value="${n.d.desconto||10}" oninput="edit('${n.id}','desconto',this.value)"></div>`;
+    ports=`<i class="port out" data-p="out"></i>`;
+  }
+  if(n.t==='total'){
+    title='💰 Orç¡¡amento';
+    body=`<div class="summary" id="l-${n.id}">Conecte produtos.</div>
+          <div class="sum"><span>Total:</span><b id="v-${n.id}">R$ 0,00</b></div>
+          <div class="sum"><span>Rendimento:</span><b id="r-${n.id}">0 mÂ²</b></div>
+          <textarea id="m-${n.id}" readonly></textarea>
+          <div class="actions">
+            <button class="btn" onclick="copy('${n.id}')">Copiar</button>
+            <button class="btn p" onclick="wa('${n.id}')">WhatsApp</button>
+            <button class="btn" onclick="printQ('${n.id}')">Imprimir</button>
+          </div>`;
+    ports=`<i class="port in" data-p="in"></i>`;
+  }
+  e.innerHTML=`<div class="head"><span>${title}</span><span class="x" onclick="removeN('${n.id}')">✕</span></div><div class="body">${body}</div>${ports}`;
+  S.append(e);
+  drag(e,n);
+  e.querySelectorAll('.port').forEach(p=>p.onclick=q=>{q.stopPropagation();connect(n.id,p.dataset.p,p)});
+}
+
+function filterProducts(nid,q){
+  const sug=document.getElementById('sug-'+nid);
+  if(!q){sug.style.display='none';return}
+  const matches=catalog.filter(p=>p.nome.toLowerCase().includes(q.toLowerCase())).slice(0,5);
+  if(!matches){sug.style.display='none';return}
+  sug.innerHTML='';sug.style.display='block';
+  matches.forEach(p=>{
+    const item=document.createElement('div');
+    item.className='prod-item';item.style.marginBottom='4px';
+    item.innerHTML=`<img class="prod-thumb" src="${p.img||''}" style="display:${p.img?'block':'none'}"><div class="prod-info"><div class="prod-name">${p.nome}</div><div class="prod-meta">${p.volume||''} • ${money(p.preco)} • ${p.rend||0}mÂ²</div></div>`;
+    item.onclick=()=>{selectProductInNodeById(nid,p);sug.style.display='none'};
+    sug.appendChild(item);
+  });
+}
+
+function selectProductInNodeById(nid,p){
+  const n=N[nid];
+  n.d.nome=p.nome;n.d.volume=p.volume;n.d.preco=p.preco;n.d.rendimento=p.rend;
+  document.querySelector('#'+nid+' input[oninput*="preco"]').value=p.preco;
+  document.querySelector('#'+nid+' input[oninput*="rendimento"]').value=p.rend;
+  document.getElementById('sel-'+nid).value='';
+  document.getElementById('sug-'+nid).style.display='none';
+  calc();
+}
+
+function selectProductInNode(p){toast('Clique em + Produto no canvas e digite o nome deste produto')}
+
+function edit(i,key,v){N[i].d[key]=v;if(key==='preco'){let e=E.find(e=>e.to.i===i&&e.to.p==='promo');if(e)promo(i,e.from.i)}calc()}
+
+function drag(e,n){
+  let a,h=e.querySelector('.head');
+  h.onmousedown=q=>{a=1;e.classList.add('dragging');let ox=q.clientX-n.x,oy=q.clientY-n.y;document.onmousemove=z=>{if(!a)return;n.x=z.clientX-ox+B.scrollLeft;n.y=z.clientY-oy;e.style.left=n.x+'px';e.style.top=n.y+'px';draw()};document.onmouseup=()=>{a=0;e.classList.remove('dragging');document.onmousemove=null}};
+}
+
+function connect(i,p,el){
+  let n=N[i];
+  if(!wire){if(p!=='out')return;wire={i,t:n.t};el.classList.add('active');return}
+  if(p==='out')return;
+  let ok=((wire.t==='cliente'||wire.t==='produto')&&n.t==='total'&&p==='in')||(wire.t==='promocao'&&n.t==='produto'&&p==='promo');
+  if(ok){if(p==='promo')E=E.filter(e=>!(e.to.i===i&&e.to.p==='promo'));E.push({i:uid('e'),from:{i:wire.i,t:wire.t},to:{i,p}});if(wire.t==='promocao')promo(i,wire.i)}
+  document.querySelectorAll('.active').forEach(x=>x.classList.remove('active'));wire=null;draw();calc();
+}
+
+function promo(pi,ri){let p=N[pi],r=N[ri],v=(+(p.d.preco||0)*(1-(+r.d.desconto||0)/100)).toFixed(2);p.d.promo=v;let e=document.querySelector('#'+pi+' input[oninput*="promo"]');if(e)e.value=v}
+
+function removeN(i){document.querySelector('#'+i).remove();delete N[i];E=E.filter(e=>e.from.i!==i&&e.to.i!==i);draw();calc()}
+
+function point(i,p){let e=document.querySelector('#'+i+' [data-p="'+p+'"]');if(!e)return;let a=e.getBoundingClientRect(),b=B.getBoundingClientRect();return{x:a.left+a.width/2-b.left+B.scrollLeft,y:a.top+a.height/2-b.top+B.scrollTop}}
+
+function draw(){
+  V.innerHTML='';
+  E.forEach(e=>{let a=point(e.from.i,'out'),b=point(e.to.i,e.to.p);if(!a||!b)return;let d=Math.max(60,Math.abs(b.x-a.x)/2),p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',`M${a.x},${a.y} C${a.x+d},${a.y} ${b.x-d},${b.y} ${b.x},${b.y}`);p.setAttribute('class','edge');p.setAttribute('stroke',e.from.t==='cliente'?'#2563eb':e.from.t==='produto'?'#16a34a':'#f59e0b');V.append(p)});
+}
+
+function calc(){
+  Object.values(N).filter(n=>n.t==='total').forEach(t=>{
+    let inE=E.filter(e=>e.to.i===t.id),cc=inE.find(e=>N[e.from.i]?.t==='cliente'),c=cc?N[cc.from.i].d:D.cliente,ps=inE.filter(e=>N[e.from.i]?.t==='produto');
+    let T=0,R=0,h='',m='';
+    ps.forEach(e=>{let p=N[e.from.i].d,q=+p.qtd||1,v=p.promo!==''?+p.promo:+p.preco||0,r=+p.rendimento||0,s=v*q,rt=r*q,name=(p.nome||'Produto')+(p.volume?' ('+p.volume+')':'');T+=s;R+=rt;h+=`<div class="item"><b>${name}</b> x${q}: <b>${money(s)}</b></div>`;m+=`📦 ${name} — Qtd: ${q}\nPreç¡¡o: ${money(v)} por unidade\nRendimento: atÃ© ${r} mÂ²/un\nSubtotal: ${money(s)}\n\n`});
+    document.querySelector('#l-'+t.id).innerHTML=h||'Conecte produtos.';
+    document.querySelector('#v-'+t.id).textContent=money(T);
+    document.querySelector('#r-'+t.id).textContent=R+' mÂ²';
+    let txt=`OlÃ¡, ${c.nome||'[cliente]'}, tudo bem?\n\nAqui Ã o ${c.vendedor||'Afonso'}, consultor da loja de tintas e decoraç¡¡o. Segue o orç¡¡amento personalizado:\n\n${m}💰 Total do orç¡¡amento: ${money(T)}\n📐 Rendimento total estimado: atÃ© ${R} mÂ²\n\nQualquer dÃºvida, estou Ã  disposiç¡¡o! 😊`;
+    document.querySelector('#m-'+t.id).value=txt;
+    t.msg=txt;t.tel=c.telefone;
+  });
+}
+
+function copy(i){navigator.clipboard.writeText(N[i].msg);toast('Copiado!')}
+function wa(i){let n=N[i],t=(n.tel||'').replace(/\D/g,'');open((t?'https://wa.me/'+t:'https://wa.me/')+'?text='+encodeURIComponent(n.msg),'_blank')}
+function printQ(i){let w=open('','_blank');w.document.write('<pre>'+N[i].msg+'</pre>');w.print()}
+function clearAll(){S.innerHTML='';V.innerHTML='';N={};E=[]}
+function saveCurrent(){orcamentos[currentOrc].nodes=Object.values(N).map(n=>({id:n.id,t:n.t,x:n.x,y:n.y,d:n.d}));orcamentos[currentOrc].edges=E;orcamentos[currentOrc].data=new Date().toISOString();localStorage.orcaOrcs=JSON.stringify(orcamentos);renderOrcamentos();toast('Orç¡¡amento salvo')}
+
+// ====== TABS ======
+document.querySelectorAll('.tab').forEach(t=>t.onclick=function(){document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));this.classList.add('active');document.getElementById('tab-catalogo').style.display=this.dataset.tab==='catalogo'?'block':'none';document.getElementById('tab-orcamentos').style.display=this.dataset.tab==='orcamentos'?'block':'none'});
+
+// ====== INIT ======
+B.onscroll=draw;onresize=draw;
+renderCatalog();renderOrcamentos();
+let c=addNode('cliente',60,50),a=addNode('produto',400,60,{nome:'Tinta / Revestimento',volume:'18 L',preco:899.99,promo:799.99,rendimento:80}),b=addNode('produto',400,340,{nome:'Tinta / Revestimento',volume:'3,6 L',preco:229.99,promo:199.99,rendimento:18}),t=addNode('total',760,120);
+E.push({i:uid('e'),from:{i:c,t:'cliente'},to:{i:t,p:'in'}},{i:uid('e'),from:{i:a,t:'produto'},to:{i:t,p:'in'}},{i:uid('e'),from:{i:b,t:'produto'},to:{i:t,p:'in'}});
+draw();calc();
+</script>
+</body>
+</html>
