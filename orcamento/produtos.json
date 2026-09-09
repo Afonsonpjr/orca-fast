@@ -1,6 +1,0 @@
-[
-  {"id":"p1","nome":"Tinta Acrilica Premium","volume":"18 L","preco":899.99,"rendimento":80,"cor":"#ffffff","categoria":"Tintas"},
-  {"id":"p2","nome":"Tinta Acrilica Premium","volume":"3,6 L","preco":229.99,"rendimento":18,"cor":"#ffffff","categoria":"Tintas"},
-  {"id":"p3","nome":"Borracha Liquida","volume":"18 L","preco":1299.99,"rendimento":70,"cor":"#e0e0e0","categoria":"Revestimentos"},
-  {"id":"p4","nome":"Quartzo Mica","volume":"5 kg","preco":449.99,"rendimento":12,"cor":"#d4af37","categoria":"Efeitos"}
-]
